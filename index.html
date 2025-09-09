@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Comissão Individual</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="shortcut icon" href="logo.ico" type="image/x-icon">
+</head>
+<body>
+
+    <div class="container">
+        <h1>Calculadora de comissão</h1>
+
+        <img src="logo-gs.png" alt="Logo Gs Locações">
+        
+        <div class="form-group">
+            <label for="selecionaFuncionario">1. Selecione a Funcionária:</label>
+            <select id="selecionaFuncionario">
+                <option value="">-- Escolha uma opção --</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="avaliacoesGoogle">2. Número de Avaliações Google:</label>
+            <input type="number" id="avaliacoesGoogle" placeholder="Ex: 7" value="0">
+        </div>
+
+        <div class="form-group">
+            <label for="pdfFile">3. Envie o relatório de vendas (PDF):</label>
+            <input type="file" id="pdfFile" accept="application/pdf">
+        </div>
+
+        <pre id="resultado"></pre>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
