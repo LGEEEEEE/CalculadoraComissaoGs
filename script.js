@@ -1,7 +1,9 @@
 // ***** ATENÇÃO: EDITE ESTA ÁREA 1 *****
 // Adicione ou altere as funcionárias e suas respectivas metas aqui.
 // As metas devem ser listadas da MAIOR para a MENOR.
-const regrasComissao = {
+
+const valorPorAvaliacao = 2.00; 
+const regrasIniciais = {
     "Ana Clara": {
         metas: [
             { valor: 57000, percentual: 5.5 },
@@ -62,11 +64,9 @@ const regrasComissao = {
     },
 
 };
-
-// ***** ATENÇÃO: EDITE ESTA ÁREA 2 *****
-// Defina o valor pago por cada avaliação do Google.
-const valorPorAvaliacao = 2.00;
-// *****************************************
+// =================================================================================
+// ELEMENTOS DO HTML (DOM)
+// =================================================================================
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js`;
 
@@ -75,8 +75,48 @@ const avaliacoesInput = document.getElementById('avaliacoesGoogle');
 const fileInput = document.getElementById('pdfFile');
 const resultadoDiv = document.getElementById('resultado');
 
+// Elementos do Modal
+const modal = document.getElementById('modalGerenciamento');
+const btnGerenciar = document.getElementById('btnGerenciar');
+const btnFecharModal = document.getElementById('btnFecharModal');
+const btnSalvarFuncionario = document.getElementById('btnSalvarFuncionario');
+const btnCancelarEdicao = document.getElementById('btnCancelarEdicao');
+const listaFuncionariasDiv = document.getElementById('listaFuncionarias');
+const formTitulo = document.getElementById('formGerenciamentoTitulo');
+const inputNome = document.getElementById('inputNome');
+const inputMetas = document.getElementById('inputMetas');
+const inputNomeOriginal = document.getElementById('inputNomeOriginal');
+
+
+// =================================================================================
+// FUNÇÕES DE GERENCIAMENTO DE DADOS (localStorage)
+// =================================================================================
+
+function getRegras() {
+    const regrasSalvas = localStorage.getItem('regrasComissao');
+    if (regrasSalvas) {
+        return JSON.parse(regrasSalvas);
+    } else {
+        localStorage.setItem('regrasComissao', JSON.stringify(regrasIniciais));
+        return regrasIniciais;
+    }
+}
+
+function saveRegras(regras) {
+    localStorage.setItem('regrasComissao', JSON.stringify(regras));
+}
+
+
+// =================================================================================
+// LÓGICA PRINCIPAL E EVENTOS
+// =================================================================================
+
+// Variável global para guardar as regras
+let regrasComissao = getRegras();
+
 function popularMenuFuncionarias() {
-    const nomes = Object.keys(regrasComissao);
+    funcionarioSelect.innerHTML = '<option value="">-- Escolha uma opção --</option>';
+    const nomes = Object.keys(regrasComissao).sort();
     for (const nome of nomes) {
         const option = document.createElement('option');
         option.value = nome;
@@ -84,9 +124,144 @@ function popularMenuFuncionarias() {
         funcionarioSelect.appendChild(option);
     }
 }
-document.addEventListener('DOMContentLoaded', popularMenuFuncionarias);
 
+// Eventos de interação principal
+document.addEventListener('DOMContentLoaded', popularMenuFuncionarias);
 fileInput.addEventListener('change', handleFileSelect);
+
+
+// =================================================================================
+// LÓGICA DO MODAL DE GERENCIAMENTO (CRUD)
+// =================================================================================
+
+function renderizarGerenciador() {
+    listaFuncionariasDiv.innerHTML = '';
+    const nomes = Object.keys(regrasComissao).sort();
+
+    if (nomes.length === 0) {
+        listaFuncionariasDiv.innerHTML = '<p>Nenhuma funcionária cadastrada.</p>';
+        return;
+    }
+
+    nomes.forEach(nome => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'item';
+        
+        const metasStr = regrasComissao[nome].metas.map(m => `${m.percentual}%`).join(' / ');
+
+        itemDiv.innerHTML = `
+            <div class="item-info">
+                <strong>${nome}</strong>
+                <span>Metas: ${metasStr}</span>
+            </div>
+            <div class="item-actions">
+                <button class="btn-terciario btn-editar" data-nome="${nome}">Editar</button>
+                <button class="btn-terciario btn-excluir" data-nome="${nome}">Excluir</button>
+            </div>
+        `;
+        listaFuncionariasDiv.appendChild(itemDiv);
+    });
+}
+
+function abrirModal() {
+    renderizarGerenciador();
+    resetarFormularioModal();
+    modal.classList.remove('hidden');
+}
+
+function fecharModal() {
+    modal.classList.add('hidden');
+}
+
+function resetarFormularioModal() {
+    formTitulo.textContent = 'Adicionar Nova Funcionária';
+    inputNome.value = '';
+    inputMetas.value = '';
+    inputNomeOriginal.value = '';
+    btnCancelarEdicao.classList.add('hidden');
+    inputNome.disabled = false;
+}
+
+function handleSalvarFuncionario() {
+    const nome = inputNome.value.trim();
+    const nomeOriginal = inputNomeOriginal.value;
+    const metasStr = inputMetas.value.trim();
+
+    if (!nome || !metasStr) {
+        alert('Por favor, preencha o nome e as metas.');
+        return;
+    }
+
+    // Converte a string de metas para o formato de objeto
+    try {
+        const metasArray = metasStr.split(',')
+            .map(part => {
+                const [valor, percentual] = part.split('=').map(s => s.trim());
+                if (!valor || !percentual) throw new Error();
+                return { valor: parseFloat(valor), percentual: parseFloat(percentual) };
+            })
+            .sort((a, b) => b.valor - a.valor); // Garante a ordem da maior para a menor
+
+        if (nomeOriginal && nomeOriginal !== nome) {
+            delete regrasComissao[nomeOriginal]; // Remove o nome antigo se foi renomeado
+        }
+        
+        regrasComissao[nome] = { metas: metasArray };
+        saveRegras(regrasComissao);
+        popularMenuFuncionarias();
+        renderizarGerenciador();
+        resetarFormularioModal();
+
+    } catch (error) {
+        alert('Formato das metas inválido. Use o formato: 57000 = 5.5, 42000 = 4.0');
+    }
+}
+
+function handleEditarFuncionario(nome) {
+    const dados = regrasComissao[nome];
+    if (!dados) return;
+
+    formTitulo.textContent = `Editando: ${nome}`;
+    inputNome.value = nome;
+    inputNomeOriginal.value = nome; // Guarda o nome original para o caso de ser alterado
+    
+    const metasStr = dados.metas.map(m => `${m.valor} = ${m.percentual}`).join(', ');
+    inputMetas.value = metasStr;
+
+    btnCancelarEdicao.classList.remove('hidden');
+}
+
+function handleExcluirFuncionario(nome) {
+    if (confirm(`Tem certeza que deseja excluir ${nome}? Esta ação não pode ser desfeita.`)) {
+        delete regrasComissao[nome];
+        saveRegras(regrasComissao);
+        popularMenuFuncionarias();
+        renderizarGerenciador();
+    }
+}
+
+
+// Eventos do Modal
+btnGerenciar.addEventListener('click', abrirModal);
+btnFecharModal.addEventListener('click', fecharModal);
+modal.addEventListener('click', (e) => { if (e.target === modal) fecharModal(); });
+btnSalvarFuncionario.addEventListener('click', handleSalvarFuncionario);
+btnCancelarEdicao.addEventListener('click', resetarFormularioModal);
+
+listaFuncionariasDiv.addEventListener('click', (e) => {
+    const nome = e.target.dataset.nome;
+    if (e.target.classList.contains('btn-editar')) {
+        handleEditarFuncionario(nome);
+    }
+    if (e.target.classList.contains('btn-excluir')) {
+        handleExcluirFuncionario(nome);
+    }
+});
+
+
+// =================================================================================
+// LÓGICA DE CÁLCULO (Permanece a mesma)
+// =================================================================================
 
 function handleFileSelect(event) {
     const file = event.target.files[0];
@@ -123,7 +298,6 @@ async function processarPDF(pdfData, nomeFuncionario, numAvaliacoes) {
             textoCompleto += item.str + ' ';
         });
     }
-
     analisarTextoDoPDF(textoCompleto, nomeFuncionario, numAvaliacoes);
 }
 
@@ -157,20 +331,15 @@ function analisarTextoDoPDF(texto, nomeFuncionario, numAvaliacoes) {
     
     let comissao = 0;
     let percentualAtingido = 0;
-    // MUDANÇA 1: Variável para guardar o NOME da meta
     let nomeMetaAtingida = "NENHUMA"; 
 
-    // O loop continua o mesmo, mas agora guarda também o nome da meta
     for (let i = 0; i < regrasDaFuncionario.length; i++) {
         const meta = regrasDaFuncionario[i];
         if (baseCalculoComissao >= meta.valor) {
             percentualAtingido = meta.percentual;
             comissao = baseCalculoComissao * (meta.percentual / 100);
-            
-            // MUDANÇA 2: Descobrimos o nome da meta
             const indiceNomeMeta = regrasDaFuncionario.length - 1 - i;
             nomeMetaAtingida = nomesMetas[indiceNomeMeta];
-            
             break;
         }
     }
@@ -178,11 +347,9 @@ function analisarTextoDoPDF(texto, nomeFuncionario, numAvaliacoes) {
     const bonusAvaliacoes = numAvaliacoes * valorPorAvaliacao;
     const totalFinal = comissao + bonusAvaliacoes;
 
-    // MUDANÇA 3: Enviamos o nome da meta para a função de exibição
     exibirResultado(nomeFuncionario, baseCalculoComissao, comissao, numAvaliacoes, bonusAvaliacoes, totalFinal, nomeMetaAtingida);
 }
 
-// MUDANÇA 4: A função agora recebe "nomeMeta" no final
 function exibirResultado(nome, baseCalculo, comissao, numAvaliacoes, bonus, total, nomeMeta) {
     const formatarMoeda = (valor) => valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const getSaudacao = () => {
@@ -198,11 +365,10 @@ function exibirResultado(nome, baseCalculo, comissao, numAvaliacoes, bonus, tota
     dataAtual.setMonth(dataAtual.getMonth() - 1);
     const mesRelatorio = meses[dataAtual.getMonth()];
 
-    // MUDANÇA 5: A linha abaixo agora usa diretamente a variável "nomeMeta"
     const metaBatidaStr = nomeMeta;
     
     const nomesMetasDisplay = ["PRIMEIRA", "SEGUNDA", "TERCEIRA", "QUARTA", "QUINTA"];
-    const regras = [...regrasComissao[nome].metas].reverse(); // Copia e inverte para listar da menor para a maior
+    const regras = [...regrasComissao[nome].metas].reverse();
     let metasStr = "";
     regras.forEach((meta, index) => {
         metasStr += `${nomesMetasDisplay[index]}: ${formatarMoeda(meta.valor)} = ${meta.percentual.toLocaleString('pt-BR')}% \n`;
@@ -211,8 +377,7 @@ function exibirResultado(nome, baseCalculo, comissao, numAvaliacoes, bonus, tota
     const mensagemFinal = `
 ${getSaudacao()}, ${nome}
 
-VALORES DE ${mesRelatorio}
-ENTREGUE: ${formatarMoeda(baseCalculo)}
+VALORES DE ${mesRelatorio} ENTREGUE: ${formatarMoeda(baseCalculo)}
 META BATIDA= ${metaBatidaStr.toUpperCase()}
 COMISSÃO: ${formatarMoeda(comissao)}
 ${String(numAvaliacoes).padStart(2, '0')} AVALIAÇÕES GOOGLE: ${formatarMoeda(bonus)}

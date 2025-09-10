@@ -5,19 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calculadora de Comissão Individual</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="shortcut icon" href="logo.ico" type="image/x-icon">
 </head>
 <body>
 
     <div class="container">
-        <h1>Calculadora de comissão</h1>
-
-        <img src="logo-gs.png" alt="Logo Gs Locações">
+        <h1>Gerador de Resumo de Comissão</h1>
         
         <div class="form-group">
             <label for="selecionaFuncionario">1. Selecione a Funcionária:</label>
             <select id="selecionaFuncionario">
-                <option value="">-- Escolha uma opção --</option>
+                <option value="">-- Carregando... --</option>
             </select>
         </div>
 
@@ -32,6 +29,35 @@
         </div>
 
         <pre id="resultado"></pre>
+
+        <button id="btnGerenciar" class="btn-secundario">Gerenciar Funcionárias</button>
+    </div>
+
+    <div id="modalGerenciamento" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <button id="btnFecharModal" class="modal-close-btn">&times;</button>
+            <h2>Gerenciar Funcionárias</h2>
+            
+            <div id="listaFuncionarias" class="lista-gerenciamento">
+                </div>
+
+            <hr>
+
+            <div class="form-gerenciamento">
+                <h3 id="formGerenciamentoTitulo">Adicionar Nova Funcionária</h3>
+                <input type="hidden" id="inputNomeOriginal">
+                <div class="form-group">
+                    <label for="inputNome">Nome:</label>
+                    <input type="text" id="inputNome" placeholder="Nome completo da funcionária">
+                </div>
+                <div class="form-group">
+                    <label for="inputMetas">Metas e Comissões:</label>
+                    <textarea id="inputMetas" rows="4" placeholder="Formato: 57000 = 5.5, 42000 = 4.0, ... (da maior para a menor)"></textarea>
+                </div>
+                <button id="btnSalvarFuncionario" class="btn-principal">Salvar</button>
+                <button id="btnCancelarEdicao" class="btn-terciario hidden">Cancelar Edição</button>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
