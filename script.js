@@ -84,8 +84,10 @@ const btnCancelarEdicao = document.getElementById('btnCancelarEdicao');
 const listaFuncionariasDiv = document.getElementById('listaFuncionarias');
 const formTitulo = document.getElementById('formGerenciamentoTitulo');
 const inputNome = document.getElementById('inputNome');
-const inputMetas = document.getElementById('inputMetas');
 const inputNomeOriginal = document.getElementById('inputNomeOriginal');
+// Novos elementos para metas dinâmicas
+const metasContainer = document.getElementById('metas-container');
+const btnAdicionarMeta = document.getElementById('btnAdicionarMeta');
 
 
 // =================================================================================
@@ -111,7 +113,6 @@ function saveRegras(regras) {
 // LÓGICA PRINCIPAL E EVENTOS
 // =================================================================================
 
-// Variável global para guardar as regras
 let regrasComissao = getRegras();
 
 function popularMenuFuncionarias() {
@@ -125,14 +126,30 @@ function popularMenuFuncionarias() {
     }
 }
 
-// Eventos de interação principal
 document.addEventListener('DOMContentLoaded', popularMenuFuncionarias);
 fileInput.addEventListener('change', handleFileSelect);
 
 
 // =================================================================================
-// LÓGICA DO MODAL DE GERENCIAMENTO (CRUD)
+// LÓGICA DO MODAL DE GERENCIAMENTO (CRUD) - ATUALIZADA
 // =================================================================================
+
+function criarLinhaDeMeta(valor = '', percentual = '') {
+    const metaRow = document.createElement('div');
+    metaRow.className = 'meta-row';
+    
+    metaRow.innerHTML = `
+        <input type="number" class="input-meta-valor" placeholder="Valor da Meta (Ex: 5000)" value="${valor}">
+        <input type="number" class="input-meta-percentual" placeholder="% (Ex: 2.5)" value="${percentual}">
+        <button type="button" class="btn-remover-meta">&times;</button>
+    `;
+    
+    metaRow.querySelector('.btn-remover-meta').addEventListener('click', () => {
+        metaRow.remove();
+    });
+    
+    metasContainer.appendChild(metaRow);
+}
 
 function renderizarGerenciador() {
     listaFuncionariasDiv.innerHTML = '';
@@ -146,19 +163,8 @@ function renderizarGerenciador() {
     nomes.forEach(nome => {
         const itemDiv = document.createElement('div');
         itemDiv.className = 'item';
-        
         const metasStr = regrasComissao[nome].metas.map(m => `${m.percentual}%`).join(' / ');
-
-        itemDiv.innerHTML = `
-            <div class="item-info">
-                <strong>${nome}</strong>
-                <span>Metas: ${metasStr}</span>
-            </div>
-            <div class="item-actions">
-                <button class="btn-terciario btn-editar" data-nome="${nome}">Editar</button>
-                <button class="btn-terciario btn-excluir" data-nome="${nome}">Excluir</button>
-            </div>
-        `;
+        itemDiv.innerHTML = `<div class="item-info"><strong>${nome}</strong><span>Metas: ${metasStr}</span></div><div class="item-actions"><button class="btn-terciario btn-editar" data-nome="${nome}">Editar</button><button class="btn-terciario btn-excluir" data-nome="${nome}">Excluir</button></div>`;
         listaFuncionariasDiv.appendChild(itemDiv);
     });
 }
@@ -176,8 +182,8 @@ function fecharModal() {
 function resetarFormularioModal() {
     formTitulo.textContent = 'Adicionar Nova Funcionária';
     inputNome.value = '';
-    inputMetas.value = '';
     inputNomeOriginal.value = '';
+    metasContainer.innerHTML = ''; // Limpa as linhas de meta
     btnCancelarEdicao.classList.add('hidden');
     inputNome.disabled = false;
 }
@@ -185,48 +191,58 @@ function resetarFormularioModal() {
 function handleSalvarFuncionario() {
     const nome = inputNome.value.trim();
     const nomeOriginal = inputNomeOriginal.value;
-    const metasStr = inputMetas.value.trim();
-
-    if (!nome || !metasStr) {
-        alert('Por favor, preencha o nome e as metas.');
+    
+    if (!nome) {
+        alert('Por favor, preencha o nome.');
         return;
     }
+    
+    const metasArray = [];
+    const metaRows = metasContainer.querySelectorAll('.meta-row');
 
-    // Converte a string de metas para o formato de objeto
-    try {
-        const metasArray = metasStr.split(',')
-            .map(part => {
-                const [valor, percentual] = part.split('=').map(s => s.trim());
-                if (!valor || !percentual) throw new Error();
-                return { valor: parseFloat(valor), percentual: parseFloat(percentual) };
-            })
-            .sort((a, b) => b.valor - a.valor); // Garante a ordem da maior para a menor
-
-        if (nomeOriginal && nomeOriginal !== nome) {
-            delete regrasComissao[nomeOriginal]; // Remove o nome antigo se foi renomeado
-        }
+    for (const row of metaRows) {
+        const valorInput = row.querySelector('.input-meta-valor');
+        const percentualInput = row.querySelector('.input-meta-percentual');
         
-        regrasComissao[nome] = { metas: metasArray };
-        saveRegras(regrasComissao);
-        popularMenuFuncionarias();
-        renderizarGerenciador();
-        resetarFormularioModal();
+        const valor = parseFloat(valorInput.value);
+        const percentual = parseFloat(percentualInput.value);
 
-    } catch (error) {
-        alert('Formato das metas inválido. Use o formato: 57000 = 5.5, 42000 = 4.0');
+        if (!isNaN(valor) && !isNaN(percentual)) {
+            metasArray.push({ valor, percentual });
+        }
     }
+
+    if (metasArray.length === 0) {
+        alert('Adicione pelo menos uma meta válida.');
+        return;
+    }
+    
+    metasArray.sort((a, b) => b.valor - a.valor);
+
+    if (nomeOriginal && nomeOriginal !== nome) {
+        delete regrasComissao[nomeOriginal];
+    }
+    
+    regrasComissao[nome] = { metas: metasArray };
+    saveRegras(regrasComissao);
+    popularMenuFuncionarias();
+    renderizarGerenciador();
+    resetarFormularioModal();
 }
 
 function handleEditarFuncionario(nome) {
     const dados = regrasComissao[nome];
     if (!dados) return;
 
+    resetarFormularioModal();
     formTitulo.textContent = `Editando: ${nome}`;
     inputNome.value = nome;
-    inputNomeOriginal.value = nome; // Guarda o nome original para o caso de ser alterado
+    inputNomeOriginal.value = nome;
     
-    const metasStr = dados.metas.map(m => `${m.valor} = ${m.percentual}`).join(', ');
-    inputMetas.value = metasStr;
+    // Popula as metas dinamicamente
+    dados.metas.forEach(meta => {
+        criarLinhaDeMeta(meta.valor, meta.percentual);
+    });
 
     btnCancelarEdicao.classList.remove('hidden');
 }
@@ -240,30 +256,26 @@ function handleExcluirFuncionario(nome) {
     }
 }
 
-
 // Eventos do Modal
 btnGerenciar.addEventListener('click', abrirModal);
 btnFecharModal.addEventListener('click', fecharModal);
 modal.addEventListener('click', (e) => { if (e.target === modal) fecharModal(); });
 btnSalvarFuncionario.addEventListener('click', handleSalvarFuncionario);
 btnCancelarEdicao.addEventListener('click', resetarFormularioModal);
+btnAdicionarMeta.addEventListener('click', () => criarLinhaDeMeta());
 
 listaFuncionariasDiv.addEventListener('click', (e) => {
     const nome = e.target.dataset.nome;
-    if (e.target.classList.contains('btn-editar')) {
-        handleEditarFuncionario(nome);
-    }
-    if (e.target.classList.contains('btn-excluir')) {
-        handleExcluirFuncionario(nome);
-    }
+    if (e.target.classList.contains('btn-editar')) { handleEditarFuncionario(nome); }
+    if (e.target.classList.contains('btn-excluir')) { handleExcluirFuncionario(nome); }
 });
 
 
 // =================================================================================
 // LÓGICA DE CÁLCULO (Permanece a mesma)
 // =================================================================================
-
 function handleFileSelect(event) {
+    // ...código de cálculo permanece inalterado...
     const file = event.target.files[0];
     const nomeFuncionario = funcionarioSelect.value;
     const numAvaliacoes = parseInt(avaliacoesInput.value) || 0;
@@ -280,8 +292,9 @@ function handleFileSelect(event) {
             processarPDF(typedarray, nomeFuncionario, numAvaliacoes);
         };
         reader.readAsArrayBuffer(file);
-    } else {
+    } else if (file) { // Se um arquivo foi selecionado mas não é PDF
         alert("Por favor, selecione um arquivo PDF válido.");
+        fileInput.value = ''; // Limpa a seleção
     }
 }
 
@@ -294,9 +307,7 @@ async function processarPDF(pdfData, nomeFuncionario, numAvaliacoes) {
     for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
-        textContent.items.forEach(item => {
-            textoCompleto += item.str + ' ';
-        });
+        textContent.items.forEach(item => { textoCompleto += item.str + ' '; });
     }
     analisarTextoDoPDF(textoCompleto, nomeFuncionario, numAvaliacoes);
 }
@@ -364,7 +375,6 @@ function exibirResultado(nome, baseCalculo, comissao, numAvaliacoes, bonus, tota
     const mesAtual = meses[dataAtual.getMonth()];
     dataAtual.setMonth(dataAtual.getMonth() - 1);
     const mesRelatorio = meses[dataAtual.getMonth()];
-
     const metaBatidaStr = nomeMeta;
     
     const nomesMetasDisplay = ["PRIMEIRA", "SEGUNDA", "TERCEIRA", "QUARTA", "QUINTA"];

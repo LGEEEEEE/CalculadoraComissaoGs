@@ -50,10 +50,14 @@
                     <label for="inputNome">Nome:</label>
                     <input type="text" id="inputNome" placeholder="Nome completo da funcionária">
                 </div>
+                
                 <div class="form-group">
-                    <label for="inputMetas">Metas e Comissões:</label>
-                    <textarea id="inputMetas" rows="4" placeholder="Formato: 57000 = 5.5, 42000 = 4.0, ... (da maior para a menor)"></textarea>
+                    <label>Metas e Comissões:</label>
+                    <div id="metas-container">
+                        </div>
+                    <button type="button" id="btnAdicionarMeta" class="btn-adicionar">+ Adicionar Meta</button>
                 </div>
+                
                 <button id="btnSalvarFuncionario" class="btn-principal">Salvar</button>
                 <button id="btnCancelarEdicao" class="btn-terciario hidden">Cancelar Edição</button>
             </div>
