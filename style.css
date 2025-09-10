@@ -123,3 +123,6 @@ hr { border: 0; border-top: 1px solid #eee; margin: 20px 0; }
     .lista-gerenciamento .item { flex-direction: column; align-items: flex-start; }
     .lista-gerenciamento .item-actions { margin-top: 10px; }
 }
+img{
+    max-width: 150px;
+}
